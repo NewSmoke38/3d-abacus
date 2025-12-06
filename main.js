@@ -1,232 +1,201 @@
 import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
 
-const rodCount = 13;
-const rodHeight = 12;
-const rodRadius = 0.15;
-const spacing = 2;
-const framePadding = 4;
-const beadsPerRod = 5;
-const beadRadius = 0.6;
-const beadStartY = 3;
-const beadSpacingY = -1.5;
-
-const rodSpan = (rodCount - 1) * spacing;
-const frameWidth = rodSpan + framePadding;
-const startX = -rodSpan / 2;
-
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xA0522D);
+scene.background = new THREE.Color(0x222222);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 15;
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 18);
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.domElement.style.touchAction = 'none';
-renderer.domElement.style.cursor = 'grab';
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.position.set(5, 10, 7);
-scene.add(dirLight);
+const light = new THREE.PointLight(0xffffff, 1, 100);
+light.position.set(10, 10, 10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040, 1.5));
 
 const abacusGroup = new THREE.Group();
 scene.add(abacusGroup);
 
-const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6, metalness: 0.1 });
-const rodMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.3 });
-const beadMaterial = new THREE.MeshStandardMaterial({ color: 0xD2691E, metalness: 0.2, roughness: 0.6 });
+const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.4 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.6, roughness: 0.2 });
+const beadMat = new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.2 });
 
-const topGeo = new THREE.BoxGeometry(frameWidth, 1, 2);
-const topBar = new THREE.Mesh(topGeo, woodMaterial);
-topBar.position.y = 6;
-abacusGroup.add(topBar);
+const frameGeo = new THREE.BoxGeometry(28, 1, 2);
+const postGeo = new THREE.BoxGeometry(1, 14, 2);
+const rodGeo = new THREE.CylinderGeometry(0.12, 0.12, 12, 16);
+const beadGeo = new THREE.SphereGeometry(0.65, 32, 16);
+beadGeo.scale(1, 0.7, 1);
 
-const botGeo = new THREE.BoxGeometry(frameWidth, 1, 2);
-const botBar = new THREE.Mesh(botGeo, woodMaterial);
-botBar.position.y = -6;
-abacusGroup.add(botBar);
+const topFrame = new THREE.Mesh(frameGeo, woodMat);
+topFrame.position.y = 6.5;
+abacusGroup.add(topFrame);
 
-const sideGeo = new THREE.BoxGeometry(1, 13, 2);
-const leftPost = new THREE.Mesh(sideGeo, woodMaterial);
-leftPost.position.x = -(frameWidth / 2) - 0.5;
-abacusGroup.add(leftPost);
+const bottomFrame = new THREE.Mesh(frameGeo, woodMat);
+bottomFrame.position.y = -6.5;
+abacusGroup.add(bottomFrame);
 
-const rightPost = new THREE.Mesh(sideGeo, woodMaterial);
-rightPost.position.x = (frameWidth / 2) + 0.5;
-abacusGroup.add(rightPost);
-
-const dividerGeo = new THREE.BoxGeometry(frameWidth, 0.5, 1.5);
-const divider = new THREE.Mesh(dividerGeo, woodMaterial);
-divider.position.y = 2;
+const divider = new THREE.Mesh(new THREE.BoxGeometry(28, 0.6, 2), woodMat);
+divider.position.y = 2.5;
 abacusGroup.add(divider);
 
-const beads = [];
-const rodsBeads = new Array(rodCount).fill(0).map(() => []);
+const leftPost = new THREE.Mesh(postGeo, woodMat);
+leftPost.position.x = -14.5;
+abacusGroup.add(leftPost);
 
-for (let i = 0; i < rodCount; i++) {
-    const x = startX + i * spacing;
-    const rodGeo = new THREE.CylinderGeometry(rodRadius, rodRadius, rodHeight, 16);
-    const rod = new THREE.Mesh(rodGeo, rodMaterial);
+const rightPost = new THREE.Mesh(postGeo, woodMat);
+rightPost.position.x = 14.5;
+abacusGroup.add(rightPost);
+
+const columns = [];
+const interactables = [];
+
+for (let i = 0; i < 13; i++) {
+    const x = -12 + (i * 2);
+    
+    const rod = new THREE.Mesh(rodGeo, metalMat);
     rod.position.set(x, 0, 0);
     abacusGroup.add(rod);
 
-    for (let b = 0; b < beadsPerRod; b++) {
-        const y = beadStartY + b * beadSpacingY;
-        const beadGeo = new THREE.SphereGeometry(beadRadius, 24, 24);
-        const bead = new THREE.Mesh(beadGeo, beadMaterial);
-        bead.position.set(x, y, 0);
-        bead.userData = { rodIndex: i };
-        abacusGroup.add(bead);
-        beads.push(bead);
-        rodsBeads[i].push(bead);
+    const colBeads = { top: [], bottom: [] };
+    
+    const heavenBead = new THREE.Mesh(beadGeo, beadMat);
+    heavenBead.position.set(x, 5.2, 0);
+    heavenBead.userData = { 
+        isBead: true, 
+        isHeaven: true, 
+        colIndex: i, 
+        homeY: 5.2, 
+        activeY: 3.5 
+    };
+    abacusGroup.add(heavenBead);
+    colBeads.top.push(heavenBead);
+    interactables.push(heavenBead);
+
+    for (let j = 0; j < 4; j++) {
+        const earthBead = new THREE.Mesh(beadGeo, beadMat);
+        const y = -5.5 + (j * 1.05);
+        earthBead.position.set(x, y, 0);
+        earthBead.userData = { 
+            isBead: true, 
+            isHeaven: false, 
+            colIndex: i, 
+            beadIndex: j,
+            homeY: -5.5 + (j * 1.05),
+            activeY: 1.5 - ((3-j) * 1.05)
+        };
+        abacusGroup.add(earthBead);
+        colBeads.bottom.push(earthBead);
+        interactables.push(earthBead);
     }
+    columns.push(colBeads);
 }
 
-let isPointerDown = false;
-let lastPointer = { x: 0, y: 0 };
-const rotationSpeed = 0.005;
 const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-let selectedBead = null;
-let isDraggingBead = false;
-let hoverBead = null;
+const mouse = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
-function pickBeadByScreen(clientX, clientY, maxPixels = 40) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    let best = null;
-    let bestDist = Infinity;
-    for (const bead of beads) {
-        const worldPos = new THREE.Vector3();
-        bead.getWorldPosition(worldPos);
-        worldPos.project(camera);
-        const sx = rect.left + (worldPos.x * 0.5 + 0.5) * rect.width;
-        const sy = rect.top + (-worldPos.y * 0.5 + 0.5) * rect.height;
-        const dx = sx - clientX;
-        const dy = sy - clientY;
-        const d = Math.hypot(dx, dy);
-        if (d < bestDist && d <= maxPixels) {
-            bestDist = d;
-            best = bead;
+let draggedObj = null;
+let offset = new THREE.Vector3();
+let isDragging = false;
+
+window.addEventListener('pointerdown', (e) => {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(interactables);
+
+    if (intersects.length > 0) {
+        isDragging = true;
+        draggedObj = intersects[0].object;
+        renderer.domElement.setPointerCapture(e.pointerId);
+        
+        const intersectionPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
+        offset.subVectors(draggedObj.position, intersectionPoint);
+    }
+});
+
+window.addEventListener('pointermove', (e) => {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    if (isDragging && draggedObj) {
+        raycaster.setFromCamera(mouse, camera);
+        const targetPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(dragPlane, targetPoint);
+        targetPoint.add(offset);
+        
+        const ud = draggedObj.userData;
+        const col = columns[ud.colIndex];
+        
+        if (ud.isHeaven) {
+            draggedObj.position.y = Math.max(3.5, Math.min(5.2, targetPoint.y));
+        } else {
+            const idx = ud.beadIndex;
+            let maxY = 1.5 - ((3 - idx) * 1.05);
+            let minY = -5.5 + (idx * 1.05);
+
+            if (idx < 3) maxY = Math.min(maxY, col.bottom[idx + 1].position.y - 1.05);
+            if (idx > 0) minY = Math.max(minY, col.bottom[idx - 1].position.y + 1.05);
+
+            draggedObj.position.y = Math.max(minY, Math.min(maxY, targetPoint.y));
         }
+    } else if (e.buttons === 1) {
+        abacusGroup.rotation.y += e.movementX * 0.005;
+        abacusGroup.rotation.x += e.movementY * 0.005;
     }
-    return best;
-}
+});
 
-function onPointerDown(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    const picked = pickBeadByScreen(event.clientX, event.clientY, 40);
-    if (picked) {
-        selectedBead = picked;
-        isDraggingBead = true;
-        renderer.domElement.style.cursor = 'grabbing';
-        renderer.domElement.setPointerCapture(event.pointerId);
-        return;
-    }
-
-    isPointerDown = true;
-    renderer.domElement.style.cursor = 'grabbing';
-    lastPointer.x = event.clientX;
-    lastPointer.y = event.clientY;
-    renderer.domElement.setPointerCapture(event.pointerId);
-}
-
-function onPointerMove(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    if (isDraggingBead && selectedBead) {
-        raycaster.setFromCamera(pointer, camera);
+window.addEventListener('pointerup', (e) => {
+    if (draggedObj) {
+        const ud = draggedObj.userData;
+        const currentY = draggedObj.position.y;
+        const threshold = (ud.homeY + ud.activeY) / 2;
         
-        const rodWorldPos = new THREE.Vector3();
-        selectedBead.getWorldPosition(rodWorldPos);
-        
-        const yDirWorldTop = new THREE.Vector3(0, 1, 0);
-        const yOriginWorld = new THREE.Vector3(0, 0, 0);
-        abacusGroup.localToWorld(yDirWorldTop);
-        abacusGroup.localToWorld(yOriginWorld);
-        const lineDir = yDirWorldTop.clone().sub(yOriginWorld).normalize();
+        let targetY;
+        const snapToActive = currentY > threshold;
 
-        const camDir = new THREE.Vector3();
-        camera.getWorldDirection(camDir); 
-        
-        const plane = new THREE.Plane(camDir, -camDir.dot(rodWorldPos));
-        const planeIntersect = new THREE.Vector3();
-        raycaster.ray.intersectPlane(plane, planeIntersect); // Always succeeds in this view
-
-        const toP = planeIntersect.clone().sub(rodWorldPos);
-        const t = toP.dot(lineDir);
-        const closestPointOnRod = rodWorldPos.clone().add(lineDir.multiplyScalar(t));
-
-        const localPoint = closestPointOnRod.clone();
-        abacusGroup.worldToLocal(localPoint);
-        
-        let newYLocal = Math.max(-5, Math.min(5, localPoint.y));
-        const rodIndex = selectedBead.userData.rodIndex;
-        const beadsOnRod = rodsBeads[rodIndex];
-        const sorted = beadsOnRod.slice().sort((a, b) => b.position.y - a.position.y);
-        const idx = sorted.indexOf(selectedBead);
-        const minGap = beadRadius * 2 + 0.05;
-
-        if (idx > 0) newYLocal = Math.min(newYLocal, sorted[idx - 1].position.y - minGap);
-        if (idx < sorted.length - 1) newYLocal = Math.max(newYLocal, sorted[idx + 1].position.y + minGap);
-
-        selectedBead.position.y = newYLocal;
-        return;
-    }
-
-    if (!isPointerDown) {
-        const hover = pickBeadByScreen(event.clientX, event.clientY, 36);
-        if (hover !== hoverBead) {
-            if (hoverBead) hoverBead.scale.setScalar(1);
-            hoverBead = hover;
-            if (hoverBead) hoverBead.scale.setScalar(1.15);
+        if (snapToActive) {
+            targetY = ud.activeY;
+        } else {
+            targetY = ud.homeY;
         }
-        renderer.domElement.style.cursor = hover ? 'pointer' : 'grab';
-        return;
+
+        if (!ud.isHeaven) {
+            const col = columns[ud.colIndex].bottom;
+            const idx = ud.beadIndex;
+
+            if (snapToActive) {
+                if (idx < 3 && col[idx + 1].position.y < targetY + 0.1) {
+                    targetY = ud.homeY;
+                }
+            } else {
+                if (idx > 0 && col[idx - 1].position.y > targetY - 0.1) {
+                    targetY = ud.activeY;
+                }
+            }
+        }
+
+        draggedObj.position.y = targetY;
     }
+    isDragging = false;
+    draggedObj = null;
+    renderer.domElement.releasePointerCapture(e.pointerId);
+});
 
-    const deltaX = event.clientX - lastPointer.x;
-    const deltaY = event.clientY - lastPointer.y;
-    abacusGroup.rotation.y += deltaX * rotationSpeed;
-    abacusGroup.rotation.x = Math.max(-1.47, Math.min(1.47, abacusGroup.rotation.x + deltaY * rotationSpeed));
-    
-    lastPointer.x = event.clientX;
-    lastPointer.y = event.clientY;
-}
-
-function onPointerUp(event) {
-    if (isDraggingBead) {
-        isDraggingBead = false;
-        selectedBead = null;
-    } else {
-        isPointerDown = false;
-    }
-    renderer.domElement.style.cursor = 'grab';
-    renderer.domElement.releasePointerCapture(event.pointerId);
-}
-
-function onWindowResize() {
+window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-}
+});
 
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
-
-renderer.domElement.addEventListener('pointerdown', onPointerDown);
-window.addEventListener('pointermove', onPointerMove);
-window.addEventListener('pointerup', onPointerUp);
-window.addEventListener('resize', onWindowResize, false);
 
 animate();
