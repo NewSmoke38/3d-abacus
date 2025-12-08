@@ -3,3 +3,28 @@
   padding: 0;
   box-sizing: border-box; 
 }
+
+body {
+  margin: 0;
+}
+
+#numbers {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  pointer-events: none;
+  font-family: monospace;
+  font-size: 24px;
+  font-weight: bold;
+  color: #3e2723;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.digit {
+  width: 30px;
+  text-align: center;
+}

@@ -2,7 +2,7 @@ import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
 import { playClack } from './sound.js';
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222222);
+scene.background = new THREE.Color(0xf5e6d3);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 0, 18);
@@ -12,17 +12,17 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-const light = new THREE.PointLight(0xffffff, 1, 100);
+const light = new THREE.PointLight(0xfff8e7, 1, 100);
 light.position.set(10, 10, 10);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0x404040, 1.5));
+scene.add(new THREE.AmbientLight(0x8b7355, 1.5));
 
 const abacusGroup = new THREE.Group();
 scene.add(abacusGroup);
 
-const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.4 });
-const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.6, roughness: 0.2 });
-const beadMat = new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.2 });
+const woodMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.8 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, metalness: 0.7, roughness: 0.3 });
+const beadMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.3, metalness: 0.1 });
 
 const frameGeo = new THREE.BoxGeometry(28, 1, 2);
 const postGeo = new THREE.BoxGeometry(1, 14, 2);
@@ -92,6 +92,40 @@ for (let i = 0; i < 13; i++) {
         interactables.push(earthBead);
     }
     columns.push(colBeads);
+}
+
+// number displays for each rod!
+const numbersContainer = document.getElementById('numbers');
+const digitDisplays = [];
+for (let i = 0; i < 13; i++) {
+    const digitEl = document.createElement('div');
+    digitEl.className = 'digit';
+    digitEl.textContent = '0';
+    numbersContainer.appendChild(digitEl);
+    digitDisplays.push(digitEl);
+}
+
+function getColumnValue(colIndex) {
+    const col = columns[colIndex];
+    let value = 0;
+    
+    const heavenBead = col.top[0];
+    const heavenMid = (heavenBead.userData.homeY + heavenBead.userData.activeY) / 2;
+    if (heavenBead.position.y <= heavenMid) value += 5;
+    
+    for (let i = 0; i < 4; i++) {
+        const earthBead = col.bottom[i];
+        const mid = (earthBead.userData.homeY + earthBead.userData.activeY) / 2;
+        if (earthBead.position.y >= mid) value += 1;
+    }
+    
+    return value;
+}
+
+function updateNumbers() {
+    for (let i = 0; i < 13; i++) {
+        digitDisplays[i].textContent = getColumnValue(i);
+    }
 }
 
 const raycaster = new THREE.Raycaster();
@@ -208,6 +242,7 @@ window.addEventListener('resize', () => {
 
 function animate() {
     requestAnimationFrame(animate);
+    updateNumbers();
     renderer.render(scene, camera);
 }
 
