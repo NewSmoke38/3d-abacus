@@ -1,4 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.154.0/build/three.module.js';
+import { playClack } from './sound.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222);
@@ -68,7 +69,7 @@ for (let i = 0; i < 13; i++) {
         isHeaven: true, 
         colIndex: i, 
         homeY: 5.2, 
-        activeY: 3.5 
+        activeY: 3.1 
     };
     abacusGroup.add(heavenBead);
     colBeads.top.push(heavenBead);
@@ -100,7 +101,11 @@ const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 let draggedObj = null;
 let offset = new THREE.Vector3();
 let isDragging = false;
-
+let lastSoundTime = 0;
+const soundThrottle = 50; // in ms
+let prevBeadY = 0; 
+const dividerY = 2.5; 
+const beadRadius = 0.65 * 0.7; 
 window.addEventListener('pointerdown', (e) => {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -111,7 +116,15 @@ window.addEventListener('pointerdown', (e) => {
     if (intersects.length > 0) {
         isDragging = true;
         draggedObj = intersects[0].object;
+        prevBeadY = draggedObj.position.y; 
         renderer.domElement.setPointerCapture(e.pointerId);
+        // sound when click upper bead
+        if (draggedObj.userData.isHeaven) {
+            playClack();
+        } else {
+            
+            playClack();
+        }
         
         const intersectionPoint = new THREE.Vector3();
         raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
@@ -133,7 +146,7 @@ window.addEventListener('pointermove', (e) => {
         const col = columns[ud.colIndex];
         
         if (ud.isHeaven) {
-            draggedObj.position.y = Math.max(3.5, Math.min(5.2, targetPoint.y));
+            draggedObj.position.y = Math.max(3.1, Math.min(5.2, targetPoint.y));
         } else {
             const idx = ud.beadIndex;
             let maxY = 1.5 - ((3 - idx) * 1.05);
